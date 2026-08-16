@@ -1,0 +1,33 @@
+# محیط مجازی پایتون
+.venv/
+venv/
+env/
+
+# فایل‌های کش پایتون
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# داده‌های خام و پردازش‌شده (حجیم)
+data/
+# data/processed/
+
+# خروجی‌ها و نتایج
+outputs/
+*.html
+*.csv
+*.parquet
+
+# تنظیمات IDE
+.vscode/
+.idea/
+
+# فایل‌های سیستمی ویندوز
+Thumbs.db
+desktop.ini
+
+# فایل‌های موقت
+*.log
+*.tmp
+.DS_Store

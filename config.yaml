@@ -1,0 +1,35 @@
+project:
+  name: thermal_dnep
+
+paths:
+  raw_data: data/raw
+  interim_data: data/interim
+  processed_data: data/processed
+  results: results
+  models: results/models
+  figures: results/figures
+  tables: results/tables
+  logs: results/logs
+
+database:  
+  server: 's173'  
+  database: 'NewWebServer'  
+  driver: 'sql server'  
+  trusted_connection: true
+
+feeder:
+  station_code: "tazb"
+
+weather:
+  source: "open-meteo"
+  temperature_variable: "temperature_2m"
+  timezone: "Asia/Tehran"
+
+thermal:
+  gas_lhv_kwh_per_m3: 10.5
+  heating_efficiency: 0.85
+  base_temperature_c: 18.0
+
+ml:
+  random_state: 42
+  test_size: 0.2

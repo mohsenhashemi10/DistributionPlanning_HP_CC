@@ -1,0 +1,212 @@
+from pathlib import Path
+import sys
+
+import pandas as pd
+
+
+# ============================================================
+# PROJECT
+# ============================================================
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+sys.path.insert(
+    0,
+    str(PROJECT_ROOT / "src")
+)
+
+
+# ============================================================
+# IMPORTS
+# ============================================================
+
+from thermal_dnep.dnep.solve import (
+    build_and_solve,
+)
+
+from thermal_dnep.dnep.results import (
+    extract_results,
+    results_to_dataframe,
+    run_sensitivity_analysis,
+)
+
+from thermal_dnep.dnep.technology_model import (
+    TechnologyParams,
+)
+
+
+# ============================================================
+# CONFIG
+# ============================================================
+
+FEEDER_CODE = "TAZB6T01"
+
+LOAD_FILE = (
+    PROJECT_ROOT
+    / "data/processed/stage5/network"
+    / f"{FEEDER_CODE}_ieee33_hourly_loads.parquet"
+)
+
+OUTPUT_DIR = (
+    PROJECT_ROOT
+    / "data/processed/stage6/dnep"
+)
+
+OUTPUT_DIR.mkdir(
+    parents=True,
+    exist_ok=True,
+)
+
+# سناریوهای برقی‌سازی حرارت
+ELECTRIFICATION_LEVELS = [
+    0.0,
+    0.1,
+    0.3,
+    0.5,
+    0.7,
+    1.0,
+]
+
+# سناریوی پایه برای اجرای تفصیلی
+BASE_ELECTRIFICATION = 0.30
+
+SOLVER_NAME = "appsi_highs"
+
+
+# ============================================================
+# MAIN
+# ============================================================
+
+def main():
+
+    print("=" * 70)
+    print("STAGE 6 - DISTRIBUTION NETWORK EXPANSION PLANNING (DNEP)")
+    print("=" * 70)
+
+    # --------------------------------------------------------
+    # 1. بررسی وجود فایل ورودی
+    # --------------------------------------------------------
+
+    if not LOAD_FILE.exists():
+        raise FileNotFoundError(
+            f"فایل بار یافت نشد: {LOAD_FILE}\n"
+            "ابتدا stage5_network.py را اجرا کنید."
+        )
+
+    # پارامترهای فناوری (برای تبدیل ایندکس به نام در نتایج)
+    tech = TechnologyParams()
+
+    print(f"\nInput load file        : {LOAD_FILE.name}")
+    print(f"Electrification levels : {ELECTRIFICATION_LEVELS}")
+    print(f"Base scenario          : {BASE_ELECTRIFICATION:.0%}")
+    print(f"Heating technologies   : {[t.name for t in tech.heating_technologies]}")
+    print(f"Cooling technologies   : {[t.name for t in tech.cooling_technologies]}")
+    print(f"Solver                 : {SOLVER_NAME}")
+
+    # --------------------------------------------------------
+    # 2. تحلیل حساسیت روی سطوح برقی‌سازی
+    # --------------------------------------------------------
+
+    print("\n" + "-" * 70)
+    print("RUNNING SENSITIVITY ANALYSIS")
+    print("-" * 70)
+
+    sensitivity_df = run_sensitivity_analysis(
+        parquet_path=str(LOAD_FILE),
+        levels=ELECTRIFICATION_LEVELS,
+        solver_name=SOLVER_NAME,
+    )
+
+    print("\n" + "=" * 70)
+    print("SENSITIVITY ANALYSIS RESULTS")
+    print("=" * 70)
+    print(sensitivity_df.to_string(index=False))
+
+    # --------------------------------------------------------
+    # 3. حل سناریوی پایه با جزئیات کامل
+    # --------------------------------------------------------
+
+    print("\n" + "-" * 70)
+    print(f"DETAILED RUN — ELECTRIFICATION LEVEL: {BASE_ELECTRIFICATION:.0%}")
+    print("-" * 70)
+
+    m, res = build_and_solve(
+        parquet_path=str(LOAD_FILE),
+        electrification_level=BASE_ELECTRIFICATION,
+        solver_name=SOLVER_NAME,
+        tee=False,
+    )
+
+    # استخراج نتایج با نام فناوری‌ها
+    detailed_results = extract_results(m, tech=tech)
+
+    print(f"\nLast year             : {detailed_results['last_year']}")
+    print(f"Total cost (NPV)      : {detailed_results['total_cost_npv']:,.0f}")
+    print(f"Lines new             : {len(detailed_results['lines_new'])}")
+    print(f"Lines reinforced      : {len(detailed_results['lines_reinforced'])}")
+    print(f"Substations upgraded  : {len(detailed_results['substations_upgraded'])}")
+    print(f"PV buses active       : {len(detailed_results['pv_capacity'])}")
+    print(f"DG buses active       : {len(detailed_results['dg_capacity'])}")
+
+    print("\nTimeline:")
+    timeline_df = pd.DataFrame(detailed_results["timeline"])
+    print(timeline_df.to_string(index=False))
+
+    # --------------------------------------------------------
+    # 4. ذخیره نتایج
+    # --------------------------------------------------------
+
+    # تبدیل نتایج تفصیلی به چند DataFrame
+    result_dfs = results_to_dataframe(detailed_results)
+
+    sensitivity_file = (
+        OUTPUT_DIR / f"{FEEDER_CODE}_dnep_sensitivity.csv"
+    )
+    summary_file = (
+        OUTPUT_DIR / f"{FEEDER_CODE}_dnep_summary.csv"
+    )
+    bus_details_file = (
+        OUTPUT_DIR / f"{FEEDER_CODE}_dnep_bus_details.csv"
+    )
+    timeline_file = (
+        OUTPUT_DIR / f"{FEEDER_CODE}_dnep_timeline.csv"
+    )
+
+    sensitivity_df.to_csv(
+        sensitivity_file,
+        index=False,
+        encoding="utf-8-sig",
+    )
+    result_dfs["summary"].to_csv(
+        summary_file,
+        index=False,
+        encoding="utf-8-sig",
+    )
+    result_dfs["bus_details"].to_csv(
+        bus_details_file,
+        index=False,
+        encoding="utf-8-sig",
+    )
+    result_dfs["timeline"].to_csv(
+        timeline_file,
+        index=False,
+        encoding="utf-8-sig",
+    )
+
+    # --------------------------------------------------------
+    # 5. خلاصه نهایی
+    # --------------------------------------------------------
+
+    print("\n" + "=" * 70)
+    print("SAVED FILES")
+    print("=" * 70)
+    print(f"  Sensitivity  : {sensitivity_file}")
+    print(f"  Summary      : {summary_file}")
+    print(f"  Bus details  : {bus_details_file}")
+    print(f"  Timeline     : {timeline_file}")
+
+    print("\nSTAGE 6 COMPLETED.")
+
+
+if __name__ == "__main__":
+    main()
