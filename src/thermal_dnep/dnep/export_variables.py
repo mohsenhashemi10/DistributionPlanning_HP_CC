@@ -116,7 +116,12 @@ def extract_all_variables(m):
             m.hp_use, "hp_use_mw",
             ["bus", "year", "yp_year", "yp_period", "time", "heat_tech"]
         )
-
+    # استفاده ساعتی هیت پمپ سرمایش
+    if hasattr(m, "hp_use2"):
+        results["operation"]["hp_use2"] = _var_to_dataframe(
+            m.hp_use2, "hp_use2_mw",
+            ["bus", "year", "yp_year", "yp_period", "time", "heat_tech"]
+        )
     # توان وارداتی از پست
     if hasattr(m, "p_import"):
         results["operation"]["p_import"] = _var_to_dataframe(

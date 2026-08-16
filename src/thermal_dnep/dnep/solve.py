@@ -164,6 +164,9 @@ def build_and_solve(
     m.COOL_CAPEX = pyo.Param(m.C_TECHS, initialize={
         j: tech.cooling_technologies[j].capex_per_kw for j in C_TECHS
     })
+    m.DUALITY=pyo.Param(m.H_TECHS, initialize={
+        k: tech.heating_technologies[k].duality for k in H_TECHS
+    })
 
     # ✅ EER پایه هر باس (سیستم سرمایشی فعلی)
     m.EER_BASE = pyo.Param(
@@ -338,7 +341,11 @@ def build_and_solve(
         m.BUSES, m.YEARS, m.YEAR_PERIODS, m.TIME_INDEX, m.H_TECHS,
         domain=pyo.NonNegativeReals,
     )
-
+    # ✅ استفاده ساعتی هیت پمپ [MW سرمایشی]
+    m.hp_use2 = pyo.Var(
+        m.BUSES, m.YEARS, m.YEAR_PERIODS, m.TIME_INDEX, m.H_TECHS,
+        domain=pyo.NonNegativeReals,
+    )
     # متغیرهای بهره‌برداری شبکه
     m.p_import = pyo.Var(
         m.BUSES, m.YEARS, m.YEAR_PERIODS, m.TIME_INDEX,

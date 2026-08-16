@@ -211,7 +211,7 @@ def build_constraints(m, tech, periods):
             return pyo.Constraint.Skip
         if t >= m.period_hours[yp]:
             return pyo.Constraint.Skip
-        return m.hp_use[b, y, yp, t, k] <= m.hp_cap[b, y, k]
+        return m.hp_use[b, y, yp, t, k]+m.hp_use2[b, y, yp, t, k] <= m.hp_cap[b, y, k]
 
     m.hp_use_capacity = pyo.Constraint(
         m.BUSES, m.YEARS, m.YEAR_PERIODS, m.TIME_INDEX, m.H_TECHS,
@@ -259,7 +259,11 @@ def build_constraints(m, tech, periods):
         base = m.BASE_LOAD[b, y, yp, t]
 
         # سرمایش: بخش قدیمی + بخش جدید
-        new_cool = sum(m.cc_use[b, y, yp, t, j] for j in m.C_TECHS)
+        new_cool = (
+            sum(m.cc_use[b, y, yp, t, j] for j in m.C_TECHS)+
+            sum(m.DUALITY[j]*m.hp_use2[b, y, yp, t, j] for j in m.H_TECHS)
+        )
+        
         old_cool = m.COOL_LOAD[b, y, yp, t] - new_cool
 
         cool = old_cool / m.EER_BASE[b] + sum(

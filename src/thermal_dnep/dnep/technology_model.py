@@ -7,6 +7,7 @@ class HeatingTechnology:
     name: str
     cop: float
     capex_per_kw: float      # $/kW حرارتی
+    duality: int
     max_share: float = 1.0   # حداکثر سهم قابل نصب
 
 
@@ -22,9 +23,9 @@ class CoolingTechnology:
 class TechnologyParams:
     # --- گزینه‌های فناوری گرمایشی ---
     heating_technologies: List[HeatingTechnology] = field(default_factory=lambda: [
-        HeatingTechnology("electric_resistance", cop=0.95, capex_per_kw=100),
-        HeatingTechnology("ashp",              cop=3.0,  capex_per_kw=400),
-        HeatingTechnology("gshp",              cop=4.5,  capex_per_kw=800),
+        HeatingTechnology("electric_resistance", cop=0.95, capex_per_kw=100,duality=0),
+        HeatingTechnology("ashp",              cop=3.0,  capex_per_kw=400,duality=1),
+        HeatingTechnology("gshp",              cop=4.5,  capex_per_kw=800,duality=1),
     ])
 
     # --- گزینه‌های فناوری سرمایشی ---
@@ -33,6 +34,8 @@ class TechnologyParams:
         CoolingTechnology("ac_inverter",       eer=4.0, capex_per_kw=350),
         CoolingTechnology("chiller_high_eff",  eer=5.5, capex_per_kw=600),
     ])
+
+    
 
     # --- شبکه ---
     # line_build_cost_per_km: float = 50_000.0
